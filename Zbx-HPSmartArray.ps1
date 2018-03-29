@@ -29,7 +29,7 @@
     Print verion number and exit
 
     .EXAMPLE
-    Get-HPSmartArray.ps1 lld ctrl
+    Zbx-HPSmartArray.ps1 -action lld -part ctrl
     {"data":[{"{#CTRL.MODEL}":"Smart Array P800","{#CTRL.SN}":"P98690G9SVA0BE"}]}
 
     .EXAMPLE
@@ -103,7 +103,6 @@ function LLD-PhysicalDrives() {
     foreach ($ctrl in $allCtrls) {
         $lld_ctrlModel = $ctrl -replace "\sin.*"
         $lld_ctrlSN = $ctrl -replace ".+sn:|\)|\(|\s"
-        $lld_ctrlSN = "P98690G9SVA0BE"
         $allPD = & "$cli" "ctrl sn=$($lld_ctrlSN) pd all show status".Split(" ") | Where-Object {$_ -match "physicaldrive"}
         foreach ($pd in $allPD) {
                 $pdNum = $pd -replace '^.*physicaldrive\s' -replace '\s.+$'
