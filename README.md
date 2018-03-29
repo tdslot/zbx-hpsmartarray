@@ -29,18 +29,18 @@ __Please, read 'Requirements and Installation' section in Wiki before use.__
 - [ ] Discovery of hpacucli.exe location
 
 ## Supported arguments  
-**action** 
-What we want to do - make LLD or get component health status (takes: lld, health) 
-**part**  
+**-action**  
+What we want to do - make LLD or get component health status (takes: lld, health)  
+**-part**  
 Smart array component - controller, logical drive or physical drive (takes: ctrl, ld, pd)  
-**identity**  
+**-identity**  
 Part of target, depends of context:  
  - controllers: main controller status, it's battery or cache status (takes: main, batt, cache);  
  - logical drives: id of logical drive (takes: 1, 2, 3, 4 etc);  
  - physical drives: id of physical drive (takes: 1E:1:1..2E:1:12 etc)  
-**ctrlsn**  
+**-ctrlsn**  
 Controller serial number    
-**-v|--version**  
+**-version**  
 Print script version and exit.  
 
 ## Usage
