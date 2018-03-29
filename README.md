@@ -9,7 +9,7 @@ The script wrote with PowerShell and works from version 2.0. To communicate with
 
 **Latest stable version:** 0.1
 
-__Please, read 'Requirements and Installation' section in Wiki before use.__  
+__Please, read 'Requirements and Installation' section in Wiki before use. Need to edit zabbix_agentd.conf file.__  
 
 ## Dependencies
  - HP Array Configuration Utility or HP Smart Storage Administrator
