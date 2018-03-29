@@ -38,6 +38,7 @@ Part of target, depends of context:
  - controllers: main controller status, it's battery or cache status (takes: main, batt, cache);  
  - logical drives: id of logical drive (takes: 1, 2, 3, 4 etc);  
  - physical drives: id of physical drive (takes: 1E:1:1..2E:1:12 etc)  
+
 **-ctrlsn**  
 Controller serial number    
 **-version**  
