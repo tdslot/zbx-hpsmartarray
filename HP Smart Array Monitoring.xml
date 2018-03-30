@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <zabbix_export>
     <version>3.4</version>
-    <date>2018-03-29T14:55:16Z</date>
+    <date>2018-03-30T08:08:50Z</date>
     <groups>
         <group>
             <name>Templates</name>
@@ -318,7 +318,7 @@
                             <publickey/>
                             <privatekey/>
                             <port/>
-                            <description>Status of Logical Drive {#LD.NUM} with capacity of {#LD.CAPACITY} on Controller {#CTRL.MODEL}.</description>
+                            <description>Status of Logical Drive {#LD.NUM} with capacity of {#LD.CAPACITY}.</description>
                             <inventory_link>0</inventory_link>
                             <applications>
                                 <application>
@@ -344,7 +344,7 @@
                             <url/>
                             <status>0</status>
                             <priority>2</priority>
-                            <description>Logical Drive {#LD.NUM} with capacity {#LD.CAPACITY} on controller {#CTRL.MODEL} status is {ITEM.LASTVALUE}.</description>
+                            <description>Logical Drive {#LD.NUM} with capacity {#LD.CAPACITY} status is {ITEM.LASTVALUE}.</description>
                             <type>0</type>
                             <manual_close>0</manual_close>
                             <dependencies/>
@@ -420,7 +420,7 @@
                             <publickey/>
                             <privatekey/>
                             <port/>
-                            <description>Status of Physical Drive {#PD.NUM} on Controller {#CTRL.MODEL}.</description>
+                            <description>Status of Physical Drive {#PD.NUM}.</description>
                             <inventory_link>0</inventory_link>
                             <applications>
                                 <application>
@@ -446,7 +446,7 @@
                             <url/>
                             <status>0</status>
                             <priority>2</priority>
-                            <description>Logical Drive {#PD.NUM} on controller {#CTRL.MODEL} status is {ITEM.LASTVALUE}.</description>
+                            <description>Physical Drive {#PD.NUM} status is {ITEM.LASTVALUE}.</description>
                             <type>0</type>
                             <manual_close>0</manual_close>
                             <dependencies/>

@@ -54,14 +54,14 @@ Param (
 )
 
 # Script version
-$VER_NUM="0.1"
+$VER_NUM="0.2"
 if ($version) {
     Write-Host $VER_NUM
     break
 }
 
 # HP Array Configuration Utility location
-$cli = 'C:\Program Files\Compaq\Hpacucli\Bin\hpacucli.exe'
+$cli = "C:\Program Files\Smart Storage Administrator\ssacli\bin\ssacli.exe"
 
 # Detect all HP Smart Array Controllers
 $allCtrls = & "$cli" "ctrl all show".Split(" ") | Where-Object {$_ -match "^Smart Array"}
@@ -153,7 +153,7 @@ function Get-PDStatus() {
         [string]$pdnum
     )
 
-    $pdStatus = & "$cli" "ctrl sn=$($sn) pd $($pdnum) show status" | Where-Object {$_ -match 'physicaldrive \d'}
+    $pdStatus = & "$cli" "ctrl sn=$($sn) pd $($pdnum) show status".Split(" ") | Where-Object {$_ -match 'physicaldrive \d'}
     Write-Host ($pdStatus -replace '.+\:\s')
 }
 
