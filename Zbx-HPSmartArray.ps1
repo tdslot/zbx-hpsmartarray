@@ -22,8 +22,8 @@
     For logical drives: id of logical drive (takes: 1, 2, 3, 4 etc);
     For physical drives: id of physical drive (takes: 1E:1:1..2E:1:12 etc)
 
-    .PARAMETER ctrlsn
-    Controller serial number
+    .PARAMETER ctrlid
+    Controller identity. Usual it's controller slot.
 
     .PARAMETER version
     Print verion number and exit
@@ -47,14 +47,14 @@
 
 Param (
 [switch]$version = $false,
-[ValidateSet("lld","health")][Parameter(Position=0)][string]$action,
-[ValidateSet("ctrl","ld","pd")][string]$part,
-[string]$identity,
-[string]$ctrlsn
+[ValidateSet("lld","health")][Parameter(Position=0, Mandatory=$True)][string]$action,
+[ValidateSet("ctrl","ld","pd")][Parameter(Position=1, Mandatory=$True)][string]$part,
+[string][Parameter(Position=2)]$ctrlid,
+[string][Parameter(Position=3)]$partid
 )
 
 # Script version
-$VER_NUM="0.2"
+$VER_NUM="0.3"
 if ($version) {
     Write-Host $VER_NUM
     break
@@ -70,9 +70,10 @@ $allCtrls = & "$cli" "ctrl all show".Split(" ") | Where-Object {$_ -match "^Smar
 function LLD-Controllers() {
     $ctrlJsonBody = ""
     foreach ($ctrl in $allCtrls) {
-        $lld_ctrlModel = $ctrl -replace "\sin.*"
+        $lld_ctrlModel = $ctrl -replace "\sin.*$"
         $lld_ctrlSN = $ctrl -replace ".+sn:|\)|\(|\s"
-        $ctrlInfo = [string]::Format('{{"{{#CTRL.MODEL}}":"{0}","{{#CTRL.SN}}":"{1}"}},',$lld_ctrlModel,$lld_ctrlSN)
+        $lld_ctrlSlot = $ctrl -replace "^.+Slot\s" -replace "\s.+$"
+        $ctrlInfo = [string]::Format('{{"{{#CTRL.MODEL}}":"{0}","{{#CTRL.SN}}":"{1}","{{#CTRL.SLOT}}":"{2}"}},',$lld_ctrlModel,$lld_ctrlSN, $lld_ctrlSlot)
         $ctrlJsonBody += $ctrlInfo
     }
     $ctrlJsonFull = '{"data":[' + $($ctrlJsonBody -replace ',$') + ']}'
@@ -85,11 +86,12 @@ function LLD-LogicalDrives() {
     foreach ($ctrl in $allCtrls) {
         $lld_ctrlModel = $ctrl -replace "\sin.*"
         $lld_ctrlSN = $ctrl -replace ".+sn:|\)|\(|\s"
-        $allLD = & "$cli" "ctrl sn=$($lld_ctrlSN) ld all show".Split(" ") | Where-Object {$_ -match "logicaldrive \d"}
+        $lld_ctrlSlot = $ctrl -replace "^.+Slot\s" -replace "\s.+$"
+        $allLD = & "$cli" "ctrl slot=$($lld_ctrlSlot) ld all show".Split(" ") | Where-Object {$_ -match "logicaldrive \d"}
         foreach ($ld in $allLD) {
             $ldNum = $ld -replace '.*logicaldrive ' -replace '\s.+$'
             $ldCap, $ldRaid = $ld -replace '.+logicaldrive.+?\(' -replace '(?<=RAID \d).*$' -split ', '
-            $ldInfo = [string]::Format('{{"{{#LD.NUM}}":"{0}","{{#LD.RAID}}":"{1}","{{#LD.CAPACITY}}":"{2}","{{#CTRL.SN}}":"{3}"}},',$ldNum, $ldRaid, $ldCap,$lld_ctrlSN)
+            $ldInfo = [string]::Format('{{"{{#LD.NUM}}":"{0}","{{#LD.RAID}}":"{1}","{{#LD.CAPACITY}}":"{2}","{{#CTRL.SN}}":"{3}","{{#CTRL.SLOT}}":"{4}"}},',$ldNum, $ldRaid, $ldCap,$lld_ctrlSN, $lld_ctrlSlot)
             $ldJsonBody += $ldInfo
         }
     }
@@ -103,10 +105,11 @@ function LLD-PhysicalDrives() {
     foreach ($ctrl in $allCtrls) {
         $lld_ctrlModel = $ctrl -replace "\sin.*"
         $lld_ctrlSN = $ctrl -replace ".+sn:|\)|\(|\s"
-        $allPD = & "$cli" "ctrl sn=$($lld_ctrlSN) pd all show status".Split(" ") | Where-Object {$_ -match "physicaldrive"}
+        $lld_ctrlSlot = $ctrl -replace "^.+Slot\s" -replace "\s.+$"
+        $allPD = & "$cli" "ctrl slot=$($lld_ctrlSlot) pd all show status".Split(" ") | Where-Object {$_ -match "physicaldrive"}
         foreach ($pd in $allPD) {
                 $pdNum = $pd -replace '^.*physicaldrive\s' -replace '\s.+$'
-                $pdInfo = [string]::Format('{{"{{#PD.NUM}}":"{0}","{{#CTRL.SN}}":"{1}"}},',$pdNum,$lld_ctrlSN)
+                $pdInfo = [string]::Format('{{"{{#PD.NUM}}":"{0}","{{#CTRL.SN}}":"{1}","{{#CTRL.SLOT}}":"{2}"}},',$pdNum, $lld_ctrlSN, $lld_ctrlSlot)
                 $pdJsonBody += $pdInfo
         }
     }
@@ -118,12 +121,12 @@ function LLD-PhysicalDrives() {
 function Get-CtrlStatus() {
     Param (
         # Smart Array Controller serial number
-        [string]$sn,
+        [string]$ctrlid,
         # Smart Array Controller component
         [ValidateSet("main","cache","batt")][string]$ctrl_part
     )
 
-    $ctrlStatus = & "$cli" "ctrl sn=$($sn) show status".Split(" ") | Where-Object {$_ -match 'controller status|cache status|battery.*status'}
+    $ctrlStatus = & "$cli" "ctrl slot=$($ctrlid) show status".Split(" ") | Where-Object {$_ -match 'controller status|cache status|battery.*status'}
     switch ($ctrl_part) {
         "main" {Write-Host ($ctrlStatus[0] -replace ".+:\s")}
         "cache" {Write-Host ($ctrlStatus[1] -replace ".+:\s")}
@@ -132,28 +135,27 @@ function Get-CtrlStatus() {
 }
 
 # Gets logical drive status
-                                function Get-LDStatus() {
-param(
-    # Smart Array Controller serial number
-    [string]$sn,
-    # Logical Disk number
-    [string]$ldnum
-)
+function Get-LDStatus() {
+    param(
+        # Smart Array Controller id
+        [string]$ctrlid,
+        # Logical Disk number
+        [string]$ldnum
+    )
 
-$ldStatus = & "$cli" "ctrl sn=$($sn) ld $($ldnum) show status".Split(" ") | Where-Object {$_ -match 'logicaldrive \d'}
-Write-Host ($ldStatus -replace '.+:\s')
+    $ldStatus = & "$cli" "ctrl slot=$($ctrlid) ld $($ldnum) show status".Split(" ") | Where-Object {$_ -match 'logicaldrive \d'}
+    Write-Host ($ldStatus -replace '.+:\s')
 }
 
 # Gets physical drive status
 function Get-PDStatus() {
     param(
-        # Smart Array Controller serial number
-        [string]$sn,
+        # Smart Array Controller id
+        [string]$ctrlid,
         # Physical Disk number
         [string]$pdnum
     )
-
-    $pdStatus = & "$cli" "ctrl sn=$($sn) pd $($pdnum) show status".Split(" ") | Where-Object {$_ -match 'physicaldrive \d'}
+    $pdStatus = & "$cli" "ctrl slot=$($ctrlid) pd $($pdnum) show status".Split(" ") | Where-Object {$_ -match 'physicaldrive \d'}
     Write-Host ($pdStatus -replace '.+\:\s')
 }
 
@@ -175,13 +177,13 @@ switch ($action) {
     "health" {
         switch ($part) {
             "ctrl" {
-                Get-CtrlStatus -sn $ctrlsn -ctrl_part $identity
+                Get-CtrlStatus -ctrlid $ctrlid -ctrl_part $partid
             }
             "ld" {
-                Get-LDStatus -sn $ctrlsn -ldnum $identity
+                Get-LDStatus -ctrlid $ctrlid -ldnum $partid
             }
             "pd" {
-                Get-PDStatus -sn $ctrlsn -pdnum $identity
+                Get-PDStatus -ctrlid $ctrlid -pdnum $partid
             }
             default {Write-Host "ERROR: Wrong second argument: use 'ctrl', 'ld' or 'pd'"}
         }
