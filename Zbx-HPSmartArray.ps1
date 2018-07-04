@@ -16,28 +16,28 @@
     .PARAMETER part
     Smart array component - controller, logical drive or physical drive (takes: ctrl, ld, pd)
 
-    .PARAMETER identity
+    .PARAMETER ctrlid
+    Controller identity. Usual it's controller slot.
+    
+    .PARAMETER partid
     Part of target, depends of context:
     For controllers: main controller status, it's battery or cache status (takes: main, batt, cache);
     For logical drives: id of logical drive (takes: 1, 2, 3, 4 etc);
     For physical drives: id of physical drive (takes: 1E:1:1..2E:1:12 etc)
 
-    .PARAMETER ctrlid
-    Controller identity. Usual it's controller slot.
-
     .PARAMETER version
     Print verion number and exit
 
     .EXAMPLE
-    Zbx-HPSmartArray.ps1 -action lld -part ctrl
-    {"data":[{"{#CTRL.MODEL}":"Smart Array P800","{#CTRL.SN}":"P98690G9SVA0BE"}]}
+    Zbx-HPSmartArray.ps1 lld ctrl
+    {"data":[{"{#CTRL.MODEL}":"Smart Array P800","{#CTRL.SN}":"P98690G9SVA0BE"},"{#CTRL.SLOT}":"0"}]}
 
     .EXAMPLE
-    Get-HPSmartArray.ps1 health ld 1
+    Get-HPSmartArray.ps1 health ld 0 1
     OK
 
     .EXAMPLE
-    Get-HPSmartArray.ps1 health pd 2E:1:12
+    Get-HPSmartArray.ps1 health pd 0 2E:1:12
     Rebuilding
 
     .NOTES
