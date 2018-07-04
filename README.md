@@ -4,6 +4,8 @@ PowerShell script for monitoring HP SmartArray RAID controllers (Zabbix)
 Zabbix Share page: https://share.zabbix.com/storage-devices/hp/hp-smart-array-controller  
 Also you can contact me with Telegram: @asand3r
 
+![alt_text](https://pp.userapi.com/c846321/v846321430/8e848/q_agCgTD6mU.jpg)
+
 zbx-hpsmartarray provides possibility to make Low Level Discovery of HP Smart Array components, such as controllers, logical and physical drives. Also you can request health status of each discovered component.
 The script wrote with PowerShell and works from version 2.0. To communicate with Smart Array it's using HP Array Configuration Utility which you must install yourself. Also, you can install HP Smart Storage Administrator toolkit, but in my case it works slowly.
 
