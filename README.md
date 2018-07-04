@@ -40,7 +40,7 @@ Part of target, depends of context:
  - physical drives: id of physical drive (takes: 1E:1:1..2E:1:12 etc)  
 
 **-ctrlid**  
-Controller serial number    
+Controller id. By default it's slot number where controller installed (before v0.3 it was s/n).  
 **-version**  
 Print script version and exit.  
 
