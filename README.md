@@ -33,13 +33,13 @@ __Please, read [Requirements and Installation](https://github.com/asand3r/zbx-hp
 What we want to do - make LLD or get component health status (takes: lld, health)  
 **-part**  
 Smart array component - controller, logical drive or physical drive (takes: ctrl, ld, pd)  
-**-identity**  
+**-partid**  
 Part of target, depends of context:  
  - controllers: main controller status, it's battery or cache status (takes: main, batt, cache);  
  - logical drives: id of logical drive (takes: 1, 2, 3, 4 etc);  
  - physical drives: id of physical drive (takes: 1E:1:1..2E:1:12 etc)  
 
-**-ctrlsn**  
+**-ctrlid**  
 Controller serial number    
 **-version**  
 Print script version and exit.  
@@ -50,14 +50,21 @@ You can find more examples on Wiki page, but I placed some cases here too.
 ```powershell
 PS C:\> .\Zbx-HPSmartArray.ps1 -action lld -part ctrl
 
-{"data":[{"{#VDISKNAME}":"vDisk01"},{"{#VDISKNAME}":"vDisk02"}]}
+{"data":[{"{#VDISKNAME}":"vDisk01"},{"{#VDISKNAME}":"vDisk02"},"{#CTRL.SLOT}":"0"}]}
 ```
 - Request health status of one component. E.g. disk '2E:1:12':
 ```powershell
-PS C:\> .\Zbx-HPSmartArray.ps1 -action health -ctrlsn "P98690G9SVA0BE" -part pd -identity 2E:1:12
+PS C:\> .\Zbx-HPSmartArray.ps1 -action health -ctrlid 0 -part pd -identity 2E:1:12
 
 Rebuilding
 ```
+Or just using positional parameter:
+```powershell
+PS C:\> .\Zbx-HPSmartArray.ps1 healthd 0 pd 2E:1:12
+
+Rebuilding
+```
+
 
 ## Zabbix templates
 In addition I've attached preconfigured Zabbix Template here, so you can use it in your environment. It's using Low Level Discovery functionality.   
@@ -66,5 +73,3 @@ Have fun and rate it on [share.zabbix.com](https://share.zabbix.com/storage-devi
 **Tested with**:  
 HP SmartArray P800, Smart Array P420i, Smart Array P440ar
 
-**Known Issues**:
-- 
