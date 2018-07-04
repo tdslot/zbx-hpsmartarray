@@ -58,13 +58,12 @@ PS C:\> .\Zbx-HPSmartArray.ps1 -action health -ctrlid 0 -part pd -identity 2E:1:
 
 Rebuilding
 ```
-Or just using positional parameter:
+Or just using positional parameters:
 ```powershell
 PS C:\> .\Zbx-HPSmartArray.ps1 healthd 0 pd 2E:1:12
 
 Rebuilding
 ```
-
 
 ## Zabbix templates
 In addition I've attached preconfigured Zabbix Template here, so you can use it in your environment. It's using Low Level Discovery functionality.   
