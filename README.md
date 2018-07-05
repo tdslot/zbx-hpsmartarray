@@ -27,9 +27,6 @@ __Please, read [Requirements and Installation](https://github.com/asand3r/zbx-hp
  - [x] virtual disks
  - [x] controllers (main status, cache status and battery status)
 
-## TODO  
-- [ ] Discovery of hpacucli.exe location
-
 ## Supported arguments  
 **-action**  
 What we want to do - make LLD or get component health status (takes: lld, health)  
