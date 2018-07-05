@@ -13,7 +13,7 @@
     .PARAMETER action
     What we want to do - make LLD or get component health status (takes: lld, health)
 
-    .PARAMETER part
+    .PARAMETER partid
     Smart array component - controller, logical drive or physical drive (takes: ctrl, ld, pd)
 
     .PARAMETER identity
@@ -30,14 +30,14 @@
 
     .EXAMPLE
     Zbx-HPSmartArray.ps1 -action lld -part ctrl
-    {"data":[{"{#CTRL.MODEL}":"Smart Array P800","{#CTRL.SN}":"P98690G9SVA0BE"}]}
+    {"data":[{"{#CTRL.MODEL}":"Smart Array P800","{#CTRL.SN}":"P98690G9SVA0BE"},"{#CTRL.SLOT}":"0"}]}
 
     .EXAMPLE
-    Get-HPSmartArray.ps1 health ld 1
+    Get-HPSmartArray.ps1 health ld 0 1
     OK
 
     .EXAMPLE
-    Get-HPSmartArray.ps1 health pd 2E:1:12
+    Get-HPSmartArray.ps1 health pd 0 2E:1:12
     Rebuilding
 
     .NOTES
