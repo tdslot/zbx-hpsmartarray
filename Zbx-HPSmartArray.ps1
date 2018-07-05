@@ -16,28 +16,28 @@
     .PARAMETER part
     Smart array component - controller, logical drive or physical drive (takes: ctrl, ld, pd)
 
-    .PARAMETER ctrlid
-    Controller identity. Usual it's controller slot.
-    
-    .PARAMETER partid
+    .PARAMETER identity
     Part of target, depends of context:
     For controllers: main controller status, it's battery or cache status (takes: main, batt, cache);
     For logical drives: id of logical drive (takes: 1, 2, 3, 4 etc);
     For physical drives: id of physical drive (takes: 1E:1:1..2E:1:12 etc)
 
+    .PARAMETER ctrlid
+    Controller identity. Usual it's controller slot, but may be set to serial number.
+
     .PARAMETER version
     Print verion number and exit
 
     .EXAMPLE
-    Zbx-HPSmartArray.ps1 lld ctrl
-    {"data":[{"{#CTRL.MODEL}":"Smart Array P800","{#CTRL.SN}":"P98690G9SVA0BE"},"{#CTRL.SLOT}":"0"}]}
+    Zbx-HPSmartArray.ps1 -action lld -part ctrl
+    {"data":[{"{#CTRL.MODEL}":"Smart Array P800","{#CTRL.SN}":"P98690G9SVA0BE"}]}
 
     .EXAMPLE
-    Get-HPSmartArray.ps1 health ld 0 1
+    Get-HPSmartArray.ps1 health ld 1
     OK
 
     .EXAMPLE
-    Get-HPSmartArray.ps1 health pd 0 2E:1:12
+    Get-HPSmartArray.ps1 health pd 2E:1:12
     Rebuilding
 
     .NOTES
@@ -54,67 +54,86 @@ Param (
 )
 
 # Script version
-$VER_NUM="0.3"
+$VERSION_NUM="0.3.1"
 if ($version) {
-    Write-Host $VER_NUM
+    Write-Host $VERSION_NUM
     break
 }
 
 # HP Array Configuration Utility location
-$cli = "C:\Program Files\Smart Storage Administrator\ssacli\bin\ssacli.exe"
+$ssacli = "$env:ProgramFiles\Smart Storage Administrator\ssacli\bin\ssacli.exe"
+if (! (Test-Path $ssacli)) {
+    $ssacli = "$env:ProgramFiles\Compaq\Hpacucli\Bin\hpacucli.exe"
+}
+
+# Determine which controller id is provided
+if ($ctrlid -match "^\d$") {
+    $ctrid_type = "slot"
+} else {
+    $ctrid_type = "sn"
+}
 
 # Detect all HP Smart Array Controllers
-$allCtrls = & "$cli" "ctrl all show".Split(" ") | Where-Object {$_ -match "^Smart Array"}
+$all_ctrls = & "$ssacli" "ctrl all show".Split() | Where-Object {$_ -match "^Smart Array"}
+# Global string to store formed LLD string
+$lld_data = ""
+
+# Retrieve one Smart Array Controller info from given string
+function Get-CtrlInfo($ctrl) {
+        $model = $ctrl -replace "\sin.*$"
+        if ($ctrl.Contains("(sn: ")) {
+            $sn = $ctrl -replace ".+sn:|\)|\(|\s"
+        } else {
+            $sn = "UNKNOWN"
+        }
+        $slot = $ctrl -replace "^.+Slot\s" -replace "\s.+$"
+        return $model, $sn, $slot
+}
 
 # Makes LLD of HP SmartArray Controllers
 function LLD-Controllers() {
-    $ctrlJsonBody = ""
-    foreach ($ctrl in $allCtrls) {
-        $lld_ctrlModel = $ctrl -replace "\sin.*$"
-        $lld_ctrlSN = $ctrl -replace ".+sn:|\)|\(|\s"
-        $lld_ctrlSlot = $ctrl -replace "^.+Slot\s" -replace "\s.+$"
-        $ctrlInfo = [string]::Format('{{"{{#CTRL.MODEL}}":"{0}","{{#CTRL.SN}}":"{1}","{{#CTRL.SLOT}}":"{2}"}},',$lld_ctrlModel,$lld_ctrlSN, $lld_ctrlSlot)
-        $ctrlJsonBody += $ctrlInfo
+    foreach ($ctrl in $all_ctrls) {
+        $ctrl_model, $ctrl_sn, $ctrl_slot = Get-CtrlInfo($ctrl)
+
+        $ctrl_info = [string]::Format('{{"{{#CTRL.MODEL}}":"{0}","{{#CTRL.SN}}":"{1}","{{#CTRL.SLOT}}":"{2}"}},',$ctrl_model,$ctrl_sn, $ctrl_slot)
+        $ctrl_json += $ctrl_info
     }
-    $ctrlJsonFull = '{"data":[' + $($ctrlJsonBody -replace ',$') + ']}'
-    Write-Host $ctrlJsonFull
+    $lld_data = '{"data":[' + $($ctrl_json -replace ',$') + ']}'
+    return $lld_data
 }
 
 # Makes LLD of HP Logical drives
 function LLD-LogicalDrives() {
-    $ldJsonBody = ""
-    foreach ($ctrl in $allCtrls) {
-        $lld_ctrlModel = $ctrl -replace "\sin.*"
-        $lld_ctrlSN = $ctrl -replace ".+sn:|\)|\(|\s"
-        $lld_ctrlSlot = $ctrl -replace "^.+Slot\s" -replace "\s.+$"
-        $allLD = & "$cli" "ctrl slot=$($lld_ctrlSlot) ld all show".Split(" ") | Where-Object {$_ -match "logicaldrive \d"}
-        foreach ($ld in $allLD) {
-            $ldNum = $ld -replace '.*logicaldrive ' -replace '\s.+$'
-            $ldCap, $ldRaid = $ld -replace '.+logicaldrive.+?\(' -replace '(?<=RAID \d).*$' -split ', '
-            $ldInfo = [string]::Format('{{"{{#LD.NUM}}":"{0}","{{#LD.RAID}}":"{1}","{{#LD.CAPACITY}}":"{2}","{{#CTRL.SN}}":"{3}","{{#CTRL.SLOT}}":"{4}"}},',$ldNum, $ldRaid, $ldCap,$lld_ctrlSN, $lld_ctrlSlot)
-            $ldJsonBody += $ldInfo
+    foreach ($ctrl in $all_ctrls) {
+        $ctrl_model, $ctrl_sn, $ctrl_slot = Get-CtrlInfo($ctrl)
+        
+        # All found logical drives
+        $all_ld = & "$ssacli" "ctrl slot=$($ctrl_slot) ld all show".Split() | Where-Object {$_ -match "logicaldrive \d"}
+        foreach ($ld in $all_ld) {
+            $ld_num = $ld -replace '.*logicaldrive ' -replace '\s.+$'
+            $ld_caption, $ld_raid = $ld -replace '.+logicaldrive.+?\(' -replace '(?<=RAID \d).*$' -split ', '
+            $ld_info = [string]::Format('{{"{{#LD.NUM}}":"{0}","{{#LD.RAID}}":"{1}","{{#LD.CAPACITY}}":"{2}","{{#CTRL.SN}}":"{3}","{{#CTRL.SLOT}}":"{4}"}},',$ld_num, $ld_raid, $ld_caption,$ctrl_sn, $ctrl_slot)
+            $ld_json += $ld_info
         }
     }
-    $ldJsonFull = '{"data":[' + $($ldJsonBody -replace ',$') + ']}'
-    Write-Host $ldJsonFull
+    $lld_data = '{"data":[' + $($ld_json -replace ',$') + ']}'
+    return $lld_data
 }
 
 # Makes LLD of HP SmartArray Physical drives
 function LLD-PhysicalDrives() {
-    $pdJsonBody = ""
-    foreach ($ctrl in $allCtrls) {
-        $lld_ctrlModel = $ctrl -replace "\sin.*"
-        $lld_ctrlSN = $ctrl -replace ".+sn:|\)|\(|\s"
-        $lld_ctrlSlot = $ctrl -replace "^.+Slot\s" -replace "\s.+$"
-        $allPD = & "$cli" "ctrl slot=$($lld_ctrlSlot) pd all show status".Split(" ") | Where-Object {$_ -match "physicaldrive"}
-        foreach ($pd in $allPD) {
-                $pdNum = $pd -replace '^.*physicaldrive\s' -replace '\s.+$'
-                $pdInfo = [string]::Format('{{"{{#PD.NUM}}":"{0}","{{#CTRL.SN}}":"{1}","{{#CTRL.SLOT}}":"{2}"}},',$pdNum, $lld_ctrlSN, $lld_ctrlSlot)
-                $pdJsonBody += $pdInfo
+    foreach ($ctrl in $all_ctrls) {
+        $ctrl_model, $ctrl_sn, $ctrl_slot = Get-CtrlInfo($ctrl)
+
+        $all_pd = & "$ssacli" "ctrl slot=$($ctrl_slot) pd all show status".Split() | Where-Object {$_ -match "physicaldrive"}
+        foreach ($pd in $all_pd) {
+                $pd_num = $pd -replace '^.*physicaldrive\s' -replace '\s.+$'
+                $pd_info = [string]::Format('{{"{{#PD.NUM}}":"{0}","{{#CTRL.SN}}":"{1}","{{#CTRL.SLOT}}":"{2}"}},',$pd_num, $ctrl_sn, $ctrl_slot)
+                $pd_json += $pd_info
         }
     }
-    $pdJsonFull = '{"data":[' + $($pdJsonBody -replace ',$') + ']}'
-    Write-Host $pdJsonFull
+    $lld_data = '{"data":[' + $($pd_json -replace ',$') + ']}'
+    return $lld_data
 }
 
 # Gets HP Array Controller status
@@ -126,11 +145,15 @@ function Get-CtrlStatus() {
         [ValidateSet("main","cache","batt")][string]$ctrl_part
     )
 
-    $ctrlStatus = & "$cli" "ctrl slot=$($ctrlid) show status".Split(" ") | Where-Object {$_ -match 'controller status|cache status|battery.*status'}
-    switch ($ctrl_part) {
-        "main" {Write-Host ($ctrlStatus[0] -replace ".+:\s")}
-        "cache" {Write-Host ($ctrlStatus[1] -replace ".+:\s")}
-        "batt" {Write-Host ($ctrlStatus[2] -replace ".+:\s")}
+    $ctrl_status = & "$ssacli" "ctrl $($ctrid_type)=$($ctrlid) show status".Split() | Where-Object {$_ -match "controller status|cache status|battery.*status"}
+    if ($ctrl_status.Length -eq 3) {
+        switch ($ctrl_part) {
+            "main" {return ($ctrl_status[0] -replace ".+:\s")}
+            "cache" {return ($ctrl_status[1] -replace ".+:\s")}
+            "batt" {return ($ctrl_status[2] -replace ".+:\s")}
+        }
+    } else {
+        return ($ctrl_status -replace ".+:\s")
     }
 }
 
@@ -143,8 +166,8 @@ function Get-LDStatus() {
         [string]$ldnum
     )
 
-    $ldStatus = & "$cli" "ctrl slot=$($ctrlid) ld $($ldnum) show status".Split(" ") | Where-Object {$_ -match 'logicaldrive \d'}
-    Write-Host ($ldStatus -replace '.+:\s')
+    $ld_status = & "$ssacli" "ctrl $($ctrid_type)=$($ctrlid) ld $($ldnum) show status".Split() | Where-Object {$_ -match 'logicaldrive \d'}
+    return ($ld_status -replace '.+:\s')
 }
 
 # Gets physical drive status
@@ -155,21 +178,21 @@ function Get-PDStatus() {
         # Physical Disk number
         [string]$pdnum
     )
-    $pdStatus = & "$cli" "ctrl slot=$($ctrlid) pd $($pdnum) show status".Split(" ") | Where-Object {$_ -match 'physicaldrive \d'}
-    Write-Host ($pdStatus -replace '.+\:\s')
+    $pd_status = & "$ssacli" "ctrl $($ctrid_type)=$($ctrlid) pd $($pdnum) show status".Split() | Where-Object {$_ -match 'physicaldrive \d'}
+    return ($pd_status -replace '.+\:\s')
 }
 
 switch ($action) {
     "lld" {
         switch ($part) {
             "ctrl" {
-                LLD-Controllers
+                Write-Host $(LLD-Controllers)
             }
             "ld" {
-                LLD-LogicalDrives
+                Write-Host $(LLD-LogicalDrives)
             }
             "pd" {
-                LLD-PhysicalDrives
+                Write-Host $(LLD-PhysicalDrives)
             }
             default {Write-Host "ERROR: Wrong second argument: use 'ctrl', 'ld' or 'pd'"}
         }
@@ -177,13 +200,13 @@ switch ($action) {
     "health" {
         switch ($part) {
             "ctrl" {
-                Get-CtrlStatus -ctrlid $ctrlid -ctrl_part $partid
+                Write-Host $(Get-CtrlStatus -ctrlid $ctrlid -ctrl_part $partid)
             }
             "ld" {
-                Get-LDStatus -ctrlid $ctrlid -ldnum $partid
+                Write-Host $(Get-LDStatus -ctrlid $ctrlid -ldnum $partid)
             }
             "pd" {
-                Get-PDStatus -ctrlid $ctrlid -pdnum $partid
+                Write-Host $(Get-PDStatus -ctrlid $ctrlid -pdnum $partid)
             }
             default {Write-Host "ERROR: Wrong second argument: use 'ctrl', 'ld' or 'pd'"}
         }
