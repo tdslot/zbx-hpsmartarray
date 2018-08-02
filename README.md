@@ -13,9 +13,6 @@ The script wrote with PowerShell and works from version 2.0. To communicate with
 
 __Please, read [Requirements and Installation](https://github.com/asand3r/zbx-hpsmartarray/wiki/Requirements-and-Installation) section in Wiki before use. Need to edit zabbix_agentd.conf file.__  
 
-## Notice
-Please, attend! Version 0.4 works only with PowerShell v3.0 and above becouse contains ConvertTo-JSON cmdlet. For now, v0.3.x and v0.4 are same in syntax and functionality, so if you have only PowerShell v2.0, you must use v0.3.x without care.
-
 ## Dependencies
  - HP Array Configuration Utility or HP Smart Storage Administrator
 
