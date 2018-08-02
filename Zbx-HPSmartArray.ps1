@@ -33,11 +33,11 @@
     {"data":[{"{#CTRL.MODEL}":"Smart Array P800","{#CTRL.SN}":"P98690G9SVA0BE"}]}
 
     .EXAMPLE
-    Get-HPSmartArray.ps1 health ld 1
+    Zbx-HPSmartArray.ps1 health ld 1
     OK
 
     .EXAMPLE
-    Get-HPSmartArray.ps1 health pd 2E:1:12
+    Zbx-HPSmartArray.ps1 health pd 2E:1:12
     Rebuilding
 
     .NOTES
@@ -54,7 +54,7 @@ Param (
 )
 
 # Script version
-$VERSION_NUM="0.4.2"
+$VERSION_NUM="0.4.3"
 if ($version) {
     Write-Host $VERSION_NUM
     break
@@ -84,7 +84,7 @@ function Make-LLD() {
     )
 
     # Detect all HP Smart Array Controllers
-    [array]$all_ctrls = & "$ssacli" "ctrl all show".Split() | Where-Object {$_ -match "Smart Array"}
+    [array]$all_ctrls = & "$ssacli" "ctrl all show".Split() | Where-Object {$_ -match "\w"}
 
     # Global list to store formed LLD object
     [array]$lld_obj_list = @()
