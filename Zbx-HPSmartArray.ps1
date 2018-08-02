@@ -54,7 +54,7 @@ Param (
 )
 
 # Script version
-$VERSION_NUM="0.3.2"
+$VERSION_NUM="0.3.3"
 if ($version) {
     Write-Host $VERSION_NUM
     break
@@ -111,7 +111,7 @@ function LLD-LogicalDrives() {
         $all_ld = & "$ssacli" "ctrl slot=$($ctrl_slot) ld all show".Split() | Where-Object {$_ -match "logicaldrive \d"}
         foreach ($ld in $all_ld) {
             $ld_num = $ld -replace '.*logicaldrive ' -replace '\s.+$'
-            $ld_caption, $ld_raid = $ld -replace '.+logicaldrive.+?\(' -replace '(?<=RAID \d).*$' -split ', '
+            $ld_caption, $ld_raid = $ld -replace '.+logicaldrive.+?\(' -replace '\).+$' -split ', '
             $ld_info = [string]::Format('{{"{{#LD.NUM}}":"{0}","{{#LD.RAID}}":"{1}","{{#LD.CAPACITY}}":"{2}","{{#CTRL.SN}}":"{3}","{{#CTRL.SLOT}}":"{4}"}},',$ld_num, $ld_raid, $ld_caption,$ctrl_sn, $ctrl_slot)
             $ld_json += $ld_info
         }
