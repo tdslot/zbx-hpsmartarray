@@ -54,7 +54,7 @@ Param (
 )
 
 # Script version
-$VERSION_NUM="0.4.3"
+$VERSION_NUM="0.4.2"
 if ($version) {
     Write-Host $VERSION_NUM
     break
