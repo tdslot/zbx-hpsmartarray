@@ -47,14 +47,14 @@
 
 Param (
     [switch]$version = $False,
-    [ValidateSet("lld","health")][Parameter(Position=0, Mandatory=$True)][string]$action,
-    [ValidateSet("ctrl","ld","pd")][Parameter(Position=1, Mandatory=$True)][string]$part,
+    [ValidateSet("lld","health")][Parameter(Position=0, Mandatory=$False)][string]$action,
+    [ValidateSet("ctrl","ld","pd", "ctrl_json")][Parameter(Position=1, Mandatory=$False)][string]$part,
     [string][Parameter(Position=2, Mandatory=$False)]$ctrlid,
     [string][Parameter(Position=3, Mandatory=$False)]$partid
 )
 
 # Script version
-$VERSION_NUM="0.4.4"
+$VERSION_NUM="0.5"
 if ($version) {
     Write-Host $VERSION_NUM
     break
@@ -132,37 +132,96 @@ function Make-LLD() {
 function Get-Health() {
     param(
         [string]$part,
-        [string]$ctrlid,
-        [string]$partid
+        [string]$ctrl_id,
+        [string]$part_id
     )
 
     # Determine which controller id is provided
-    if ($ctrlid -match "^\d{1,}\w?$") {
-        $ctrid_type = "slot"
+    if ($ctrl_id -match "^\d{1,}\w?$") {
+        $ctrl_id_type = "slot"
     } else {
-        $ctrid_type = "sn"
+        $ctrl_id_type = "sn"
     }
 
-    switch ($part) {
-        "ctrl" {
-            $ctrl_status = & "$ssacli" "ctrl $($ctrid_type)=$($ctrlid) show status".Split(" ") | Where-Object {$_ -match "controller status|cache status|battery.*status"}
-            if ($ctrl_status.Length -eq 3) {
-                switch ($partid) {
-                    "main" {return ($ctrl_status[0] -replace ".+:\s")}
-                    "cache" {return ($ctrl_status[1] -replace ".+:\s")}
-                    "batt" {return ($ctrl_status[2] -replace ".+:\s")}
+    # Hash table for master item to convert to JSON
+    $master_item = @{}
+
+    switch -Regex ($part) {
+        "^ctrl$" {
+            if ($ctrl_id -ne "full") {
+                $ctrl_status = & "$ssacli" "ctrl $($ctrl_id_type)=$($ctrl_id) show status".Split() | Where-Object {$_ -match "status"}
+                if ($ctrl_status.Length -eq 3) {
+                    switch ($part_id) {
+                        "main" {return $ctrl_status[0] -replace "^.+:\s"}
+                        "cache" {return $ctrl_status[1] -replace "^.+:\s"}
+                        "batt" {return $ctrl_status[2] -replace "^.+:\s"}
+                    
+                        "full" {
+                            $ctrl_data = [psobject]@{"main" = $ctrl_status[0] -replace "^.+:\s";
+                                                     "cache" = $ctrl_status[1] -replace "^.+:\s";
+                                                     "battery" = $ctrl_status[2] -replace "^.+:\s"
+                                                    }
+                            $master_item.Add($ctrl_id.ToString(), $ctrl_data)
+                            return ConvertTo-Json -InputObject $master_item -Compress
+                        }
+                    }
+                } else {
+                    return ($ctrl_status -replace ".+:\s")
                 }
             } else {
-                return ($ctrl_status -replace ".+:\s")
+                $all_ctrls = & "$ssacli" "ctrl all show".Split() | Where-Object {$_ -match "\w"}
+                $all_ctrls | ForEach-Object {
+                    if ($_ -match ".+ in Slot (?<Slot>\d{1,})") {
+                        $ctrl_slot = $Matches.Slot
+                        $data = & "$ssacli" "ctrl slot=$($ctrl_slot) show".Split() | Where-Object {$_ -match "\w"}
+                        $json_obj = [psobject]@{
+                            "main-status" = [string]($data -match "Controller Status" -replace "^.+:\s");
+                            "battery-status" = [string]($data -match "Battery.+? Status" -replace "^.+:\s");
+                            "cache-status" = [string]($data -match "Cache Status" -replace "^.+:\s");
+                            "ctrl-temperature" = [string]($data -match "Controller Temperature" -replace "^.+:\s");
+                            "cache-temperature" = [string]($data -match "Cache.+? Temperature" -replace "^.+:\s");
+                            "driver-version" = [string]($data -match "Driver Version" -replace "^.+:\s");
+                            "firmware-version" = [string]($data -match "Firmware Version" -replace "^.+:\s")
+                        }
+                    }
+                    $master_item.Add($ctrl_slot.ToString(), $json_obj)
+                }
+                return ConvertTo-Json -InputObject $master_item
             }
         }
-        "ld" {
-            $ld_status = & "$ssacli" "ctrl $($ctrid_type)=$($ctrlid) ld $($partid) show status".Split() | Where-Object {$_ -match 'logicaldrive \d'}
-            return ($ld_status -replace '.+:\s')
-        }
-        "pd" {
-            $pd_status = & "$ssacli" "ctrl $($ctrid_type)=$($ctrlid) pd $($partid) show status".Split() | Where-Object {$_ -match 'physicaldrive \d'}
-            return ($pd_status -replace '.+\:\s')
+        "^(ld|pd)$" {
+            if ($ctrl_id -ne "full") {
+                if ($part_id -ne "full") {
+                    $status = & "$ssacli" "ctrl $($ctrl_id_type)=$($ctrl_id) $($part) $($part_id) show status".Split() | Where-Object {$_ -match '(log|phys)icaldrive'}
+                    return ($status -replace '.+:\s')
+                } else {
+                    $all_statuses = & "$ssacli" "ctrl $($ctrl_id_type)=$($ctrl_id) $($part) all show status".Split() | Where-Object {$_ -match '(log|phys)icaldrive'}
+                    foreach ($status in $all_statuses) {
+                        if ($status -match "(log|phys)icaldrive (?<Num>[\w\d:]{1,}) .+\): (?<Status>.+)") {
+                            $master_item.add($Matches.Num, $Matches.Status)
+                        }
+                    }
+                    return ConvertTo-Json -InputObject $master_item -Compress
+                }
+            } else {
+                $all_ctrls = & "$ssacli" "ctrl all show".Split() | Where-Object {$_ -match "\w"}
+                $all_ctrls | ForEach-Object {
+                    if ($_ -match ".+ in Slot (?<Slot>\d{1,})") {
+                        $ctrl_slot = $Matches.Slot
+                        $data = & "$ssacli" "ctrl slot=$($ctrl_slot) $($part) all show status".Split() | Where-Object {$_ -match "\w"}
+
+                        $data | ForEach-Object {
+                            if ($_ -match "(log|phys)icaldrive (?<Num>[\w\d:]{1,}) .+\): (?<Status>.+)") {
+                                $json_obj += [psobject]@{
+                                    [string]$Matches.Num = $Matches.Status
+                                }
+                            }
+                        }
+                    }
+                    $master_item.Add($ctrl_slot.ToString(), $json_obj)
+                }
+                return ConvertTo-Json -InputObject $master_item
+            }
         }
     }
 }
@@ -172,7 +231,6 @@ switch ($action) {
         Write-Host $(Make-LLD -part $part)
     }
     "health" {
-        Write-Host $(Get-Health -part $part -ctrlid $ctrlid -partid $partid)
+        Write-Host $(Get-Health -part $part -ctrl_id $ctrlid -part_id $partid)
     }
-    default {Write-Host "ERROR: Wrong first argument: use 'lld' or 'health'"}
 }
