@@ -192,8 +192,16 @@ def usage():
     print("-i --identity part identification")
     print("-c --ctrlid controller id oder serial number")
 
+def get_ssacli():
+    for fpath in ('/usr/sbin/ssacli', '/usr/sbin/hpssacli', '/usr/sbin/hpacucli'):
+        if os.path.isfile(fpath) and os.access(fpath, os.X_OK):
+            return fpath
+    return None
+
 def main(action, ctrlid, part, partid):
-    ssacli = '/usr/sbin/ssacli'
+    ssacli = get_ssacli()
+    if not ssacli:
+        return 1
     if action == 'lld':
         print(make_lld(ssacli, part))
         return 0
