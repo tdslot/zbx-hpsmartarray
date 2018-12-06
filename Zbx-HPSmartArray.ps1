@@ -169,6 +169,8 @@ function Get-Health() {
                     return ($ctrl_status -replace ".+:\s")
                 }
             } else {
+                # Next code works fine and must forms coorect output with many controllers, but it does two execution
+                # of ssacli.exe util. It's kind of bad decision.
                 $all_ctrls = & "$ssacli" "ctrl all show".Split() | Where-Object {$_ -match "\w"}
                 $all_ctrls | ForEach-Object {
                     if ($_ -match ".+ in Slot (?<Slot>\d{1,})") {
