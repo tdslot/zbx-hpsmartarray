@@ -54,7 +54,7 @@ Param (
 )
 
 # Script version
-$VERSION_NUM="0.4.4"
+$VERSION_NUM="0.4.5"
 if ($version) {
     Write-Host $VERSION_NUM
     break
@@ -99,7 +99,7 @@ function Make-LLD() {
                     $all_ld = & "$ssacli" "ctrl slot=$($ctrl_slot) ld all show status".Split() | Where-Object {$_ -match "logicaldrive"}
                     
                     foreach ($ld in $all_ld) {
-                        if ($ld -match "logicaldrive (?<Num>\d{1,}) \((?<Capacity>[\d.]{1,} [KGT]B?), (?<RAID>RAID [\d\+]+)\)") {
+                        if ($ld -match "logicaldrive (?<Num>\d{1,}) \((?<Capacity>[\d.]{1,} [KGT]B?), (?<RAID>(RAID)?\s?[\d\+]+)\)") {
                             [array]$lld_obj_list += [psobject]@{"{#LD.NUM}" = $Matches.Num;
                                                                 "{#LD.CAPACITY}" = $Matches.Capacity;
                                                                 "{#LD.RAID}" = $Matches.RAID;
