@@ -145,20 +145,15 @@ function Get-Health() {
 
     switch ($part) {
         "ctrl" {
-            $ctrl_status = & "$ssacli" "ctrl $($ctrid_type)=$($ctrlid) show status".Split(" ") | Where-Object {$_ -match "controller status|cache status|battery.*status"}
-            if ($ctrl_status.Length -eq 3) {
+            $ctrl_status = & "$ssacli" "ctrl $($ctrid_type)=$($ctrlid) show status".Split() | Where-Object {$_ -match "status"}
+            if ($ctrl_status.Length -gt 1) {
                 switch ($partid) {
                     "main" {return ($ctrl_status[0] -replace ".+:\s")}
                     "cache" {return ($ctrl_status[1] -replace ".+:\s")}
                     "batt" {return ($ctrl_status[2] -replace ".+:\s")}
-            } elseif ($ctrl_status.Length -eq 2) {
-                switch ($partid) {
-                    "main" {return ($ctrl_status[0] -replace ".+:\s")}
-                    "cache" {return ($ctrl_status[1] -replace ".+:\s")}
-                    }
-            }
-            } else {
-                return ($ctrl_status -replace ".+:\s")
+                } else {
+                    return ($ctrl_status -replace ".+:\s")
+                }
             }
         }
         "ld" {
