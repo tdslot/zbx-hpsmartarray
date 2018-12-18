@@ -54,7 +54,7 @@ Param (
 )
 
 # Script version
-$VERSION_NUM="0.4.5"
+$VERSION_NUM="0.4.6"
 if ($version) {
     Write-Host $VERSION_NUM
     break
@@ -151,7 +151,12 @@ function Get-Health() {
                     "main" {return ($ctrl_status[0] -replace ".+:\s")}
                     "cache" {return ($ctrl_status[1] -replace ".+:\s")}
                     "batt" {return ($ctrl_status[2] -replace ".+:\s")}
-                }
+            } elseif ($ctrl_status.Length -eq 2) {
+                switch ($partid) {
+                    "main" {return ($ctrl_status[0] -replace ".+:\s")}
+                    "cache" {return ($ctrl_status[1] -replace ".+:\s")}
+                    }
+            }
             } else {
                 return ($ctrl_status -replace ".+:\s")
             }
