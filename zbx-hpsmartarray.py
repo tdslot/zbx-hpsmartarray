@@ -53,6 +53,7 @@ __author__ = "Thomas Hooge"
 __email__ = "thomas@hoogi.de"
 __version__ = "0.1"
 
+
 def get_ctrlinfo(ctrl):
     try:
         model = re.search("(.*) in Slot.*", ctrl, flags=re.IGNORECASE).group(1)
@@ -65,8 +66,9 @@ def get_ctrlinfo(ctrl):
     try:
         slot = re.search(".*slot (\d+).*", ctrl, flags=re.IGNORECASE).group(1)
     except:
-       slot = None
+        slot = None
     return model, sn, slot
+
 
 def get_ldinfo(ld):
     try:
@@ -74,25 +76,27 @@ def get_ldinfo(ld):
     except:
         return None, None, None
     try:
-        capacity = re.search("\(([\d.]{1,} [KGT]B?),", ld).group(1)
+        capacity = re.search("\(([\d.]+ [KGT]B?),", ld).group(1)
     except:
         capacity = "UNKNOWN"
     try:
-        raid = re.search("(RAID [\d\+]+)\)", ld).group(1)
+        raid = re.search("(RAID [\d+]+)\)", ld).group(1)
     except:
         raid = "UNKNOWN"
     return num, capacity, raid
 
+
 def get_pdinfo(pd):
     try:
-        num = re.search("(\d{1,}\w(:?\d){1,2})", pd).group(1)
+        num = re.search("(\d+\w(:?\d){1,2})", pd).group(1)
     except:
         return None, None
     try:
-        capacity = re.search("(\d{1,} [KGT]B?)\)", pd).group(1)
+        capacity = re.search("(\d+ [KGT]B?)\)", pd).group(1)
     except:
         capacity = "UNKNOWN"
     return num, capacity
+
 
 def make_lld(ssacli, part):
     cmd = [ssacli]
@@ -132,6 +136,7 @@ def make_lld(ssacli, part):
 
     return json.dumps({'data': lld_obj_list})
 
+
 def get_health(ssacli, ctrlid, part, partid):
     cmd = [ssacli]
 
@@ -139,13 +144,14 @@ def get_health(ssacli, ctrlid, part, partid):
         return "UNKNOWN"
 
     ctrlid = str(ctrlid)
-    if re.match("^\d{1,}\w?$", ctrlid):
+    if re.match("^\d+\w?$", ctrlid):
         ctrlid_type = 'slot'
     else:
-        ctrlid_type= 'sn'
+        ctrlid_type = 'sn'
 
     if part == 'ctrl':
-        output = subprocess.check_output(cmd + ['ctrl', '='.join((ctrlid_type, ctrlid)), 'show', 'status']).decode("utf-8")
+        output = subprocess.check_output(cmd + ['ctrl', '='.join((ctrlid_type, ctrlid)),
+                                                'show', 'status']).decode("utf-8")
         for line in output.splitlines():
             if partid == 'main':
                 m = re.match("\s*controller status:\s(\w+)", line, flags=re.IGNORECASE)
@@ -162,7 +168,8 @@ def get_health(ssacli, ctrlid, part, partid):
 
     elif part == 'ld':
         try:
-            output = subprocess.check_output(cmd + ['ctrl', '='.join((ctrlid_type, ctrlid)), 'ld', partid, 'show', 'status']).decode("utf-8")
+            output = subprocess.check_output(cmd + ['ctrl', '='.join((ctrlid_type, ctrlid)),
+                                                    'ld', partid, 'show', 'status']).decode("utf-8")
         except:
             return "UNKNOWN"
         for line in output.splitlines():
@@ -173,7 +180,8 @@ def get_health(ssacli, ctrlid, part, partid):
 
     elif part == 'pd':
         try:
-            output = subprocess.check_output(cmd + ['ctrl', '='.join((ctrlid_type, ctrlid)), 'pd', partid, 'show', 'status']).decode("utf-8")
+            output = subprocess.check_output(cmd + ['ctrl', '='.join((ctrlid_type, ctrlid)),
+                                                    'pd', partid, 'show', 'status']).decode("utf-8")
         except:
             return "UNKNOWN"
         for line in output.splitlines():
@@ -184,6 +192,7 @@ def get_health(ssacli, ctrlid, part, partid):
 
     return "UNKNOWN"
 
+
 def usage():
     print("HP RAID Controller for Zabbix")
     print("-h --help this help page")
@@ -192,14 +201,17 @@ def usage():
     print("-i --identity part identification")
     print("-c --ctrlid controller id oder serial number")
 
+
 def get_ssacli():
     for fpath in ('/usr/sbin/ssacli', '/usr/sbin/hpssacli', '/usr/sbin/hpacucli'):
         if os.path.isfile(fpath) and os.access(fpath, os.X_OK):
             return fpath
     return None
 
+
 def main(action, ctrlid, part, partid):
     ssacli = get_ssacli()
+
     if not ssacli:
         return 1
     if action == 'lld':
@@ -211,6 +223,7 @@ def main(action, ctrlid, part, partid):
     else:
         print("ERROR: Wrong action argument: use 'lld' or 'health'")
         return 1
+
 
 if __name__ == "__main__":
     try:
