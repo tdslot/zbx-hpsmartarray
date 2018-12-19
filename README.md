@@ -9,7 +9,7 @@ Also you can contact me with Telegram: @asand3r
 zbx-hpsmartarray provides possibility to make Low Level Discovery of HP Smart Array components, such as controllers, logical and physical drives. Also you can request health status of each discovered component.
 The script wrote with PowerShell and works from version 3.0. To communicate with Smart Array it's using HP Array Configuration Utility or HP Smart Storage Administrator toolkit which you must install yourself.  
 
-**Latest stable version:** 0.4.5
+**Latest stable version:** 0.4.6
 
 __Please, read [Requirements and Installation](https://github.com/asand3r/zbx-hpsmartarray/wiki/Requirements-and-Installation) section in Wiki before use. Need to edit zabbix_agentd.conf file.__  
 
